@@ -1,0 +1,10 @@
+{
+  "name": "onbeat",
+  "version": "1.0.0",
+  "description": "Delay functions using promises to trigger on a beat.",
+  "main": "index.js",
+  "repository": "git@github.com:Ric-Lavers/onBeat.git",
+  "author": "Ric-Lavers <ric_lavers@outlook.com>",
+  "license": "MIT",
+  "private": false
+}
