@@ -14,3 +14,9 @@ window[custom] = {
 }
 
 var wrAF = window.requestAnimationFrame
+
+
+modules.exports = {
+  setup: () => {},
+  onBeat: () => {},
+}
