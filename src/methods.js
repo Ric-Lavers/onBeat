@@ -1,9 +1,4 @@
-import { beatMark, bpm, custom } from './index.js'
 
-const customMark = (currentMark, mark) => (
-  window[custom][mark]
-    && window[custom][mark].includes(currentMark)
-)
 /**
  * 
  * @param {*} bpm 
@@ -20,6 +15,13 @@ export const bpmToMs = (bpm, options={decimals: 2}) => {
 }
 
 /**
+ * setUp
+ * 
+ * sets the time signiture, bpm, custom markers, and default custom markers. 
+ */
+
+
+/**
  * sets the beat mark to the bpm
  * 
  * @param {number} bpms 
@@ -27,34 +29,179 @@ export const bpmToMs = (bpm, options={decimals: 2}) => {
  * @param {string} timeSigniture 
  * @param {number} progress  (ms)
  */
-export const setBeatMark = ( bpms=500, phaseLen=16, timeSigniture='sixteenths' ) => progress => {
-  // const quaters = [""]
-  // const eighths = ["", "&"]
-  // const triplets = ["", "trip", "let"]
-  const sixteenths = ["-", "e", "&", "a"]
-  let currentValue = 0
-  let note = null
-  let beat = progress / bpms
-  let nextValue = (Math.round( progress / bpms ) % phaseLen) + 1
 
-  if (nextValue <= phaseLen) {
-    if (currentValue !== Math.round( progress / bpms ) + 1){
-      currentValue = nextValue
-    }
-    let sixteenth = beat === 0 ? 0 :Math.round( progress / (bpms / 4) + 1 ) % 4
+// const quaters = [""]
+// const eighths = ["", "&"]
+// const triplets = ["", "trip", "let"]
+const sixteenths = ["-", "e", "&", "a"]
+export const setBeatMark = ( bpms=500, phaseLen=16, timeSigniture='sixteenths' ) => timestamp => {
+  let beat = Math.floor((timestamp / bpms) % phaseLen) + 1
+  let sixteenthNote = sixteenths[Math.floor(timestamp / (bpms / 4)) % 4]
+
+  const beatMark = `${beat}${sixteenthNote}`
+
+  if ( beatMark !== window['beatMark']){
+    window['beatMark'] = beatMark
+  }
+}
+
+const convertMarkTonumbers = mark => {
+  let beat = parseInt(mark)
+  let sixteenthNote = sixteenths.indexOf(mark[1])
+  return [beat, sixteenthNote]
+}
+
+
+
+export default class onBeat {
+  static sixteenths = ["-", "e", "&", "a"]
+  static eighths = ["-", "&"]
+  static quaters = ["-"]
   
-    if ( note !== sixteenth ) {
-      // console.log(nextValue + sixteenths[sixteenth] )
-      window['beatMark'] = `${nextValue}${sixteenths[sixteenth]}`
-      note = sixteenth
+  convertMarkTonumbers = mark => {
+    let beat = parseInt(mark)
+    
+    let indexOf = onBeat.sixteenths.indexOf(mark[1] )
+    let sixteenthNote = indexOf === -1 ? 0 :indexOf
+    return [beat, sixteenthNote]
+  }
 
-      if ( currentValue === phaseLen && note === 3 ) {// reset
-        currentValue = 0
-      }
-      return nextValue + sixteenths[sixteenth]
+  constructor(bpm, phaseLen, timeSigniture, options={ customMarks: [] }) {
+    let { sixteenths, eighths, quaters } = onBeat
+    let ts = [sixteenths, quaters, eighths, sixteenths]
+    this.bpms = bpmToMs( bpm ) || 500
+    this.phaseLen = phaseLen || 4
+    this.timeSigniture = timeSigniture || 4
+    this.beatMark = "0-"
+    // loops
+    this.loopOptions = {
+      repeat: true,
+      duration: 2000,
+    }
+    this.que = {}
+    this.stop = false
+    this.start = null
+    // globals
+    this.setToWindow= false
+    // debug
+    this.debug = true
+    this.customMarks = {
+      'default': ['1-'],
+      '16th': onBeat.sixteenths,
+      '8th': onBeat.eighths,
+      '4th': onBeat.quaters,
+      ...options.customMarks
     }
   }
-  
+
+  checkCustomMark = (currentMark, mark) => {
+    currentMark = ['16th','8th','4th'].includes(mark) 
+          ? currentMark[1]
+          : currentMark
+    return (
+      this.customMarks[mark]
+        && this.customMarks[mark].includes(currentMark)
+    )
+  }
+
+  toggleStop() {
+    this.stop = !this.stop
+  }
+
+  getBeatMark= () => {this.setBeatMark(); return this.beatMark}
+
+  setBeatMark = timestamp => {
+    const beatMark = this.getCurrentMark(timestamp)
+    if ( beatMark !== this.beatMark ) {
+      this.beatMark = beatMark
+    }
+    if ( this.setToWindow ) {
+      window['beatMark'] = beatMark
+    }
+  }
+
+  getCurrentMark = (timestamp = window.performance.now()) => {
+    const beat = Math.floor(
+      (timestamp / this.bpms) % this.phaseLen) + 1
+    const sixteenthNote = sixteenths[Math.floor(
+      timestamp / (this.bpms / this.timeSigniture)) % this.timeSigniture]
+
+    const beatMark = `${beat}${sixteenthNote}`
+    return beatMark
+  }
+
+  getTimeTilMark = (mark, timestamp = window.performance.now()) => {
+    let [ beat, sixteenthNote] = this.convertMarkTonumbers(mark)
+    let [ b, s] = this.convertMarkTonumbers(this.getCurrentMark())
+		console.log(
+    	[ beat, sixteenthNote],
+      [ b, s]
+    )
+  	let beatTime = 500 * 4
+    let fraction = beatTime/ (4*4)
+    const getTime = (b,s) => ((fraction *4 * b) + (fraction * (s + 1)))
+    let markTime = getTime(beat,sixteenthNote)
+		let currentTime = getTime(b,s)
+    console.log(
+    	markTime,
+			currentTime
+    )
+		const timeTilMark = currentTime < markTime ? markTime - currentTime : beatTime + markTime - currentTime
+		return timeTilMark
+  }
+
+  wRAF_LOOP = (timestamp, cb) => {
+
+    if(!this.start) this.start = timestamp;
+    let progress = timestamp - this.start;
+    cb(progress);
+
+    if((progress < this.loopOptions.duration || this.loopOptions.repeat) && !this.stop){ 
+      let id = window.requestAnimationFrame(t => this.wRAF_LOOP(t, cb))
+    }
+  }
+
+  beatMarkLoop = () => {
+    if ( Object.getOwnPropertySymbols(this.que).length ) {
+      this.stop = false
+      return
+    }
+    this.stop = false
+
+    const set = () => {
+      let bm = this.getBeatMark()
+      window['beatMark'] = bm
+      if (this.debug){
+        document.getElementById('beatmark').innerText = bm
+      }
+    }
+
+    window.requestAnimationFrame(ts => this.wRAF_LOOP(ts, set) )
+  }
+
+
+  asyncStep = async (mark, cb) =>{
+    
+    this.beatMarkLoop()
+    mark = typeof mark === 'number' ? `${mark}${'-'}` : mark
+    // maybe i'll need this 
+    const markSymbol = Symbol(mark)
+    this.que[markSymbol] = cb
+    let step = () => {
+      if ( this.beatMark === mark || this.checkCustomMark(this.beatMark, mark) ) {
+        delete this.que[markSymbol]
+        if ( !Object.getOwnPropertySymbols(this.que).length ) {
+          this.stop = true
+        }
+        return cb(`_${mark}_`)
+      }
+      if(this.beatMark !== mark ){
+        window.requestAnimationFrame(step)
+      }
+    }
+    window.requestAnimationFrame(step)
+  }
+
 }
 
 
@@ -93,11 +240,20 @@ export const promiseStep = (mark, cb) => new Promise((resolve, reject) => {
   window.requestAnimationFrame(step)
 })
 
+const checkCustomMark = (currentMark, mark) => {
+  currentMark = ['16th','8th','4th'].includes(mark) 
+        ? currentMark[1]
+        : currentMark
+  return (
+    window[mark]
+      && window[mark].includes(currentMark)
+  )
+}
+
 export const asyncStep = async (mark, cb) =>{
-  console.log( mark )
   let step = () => {
 
-    if (window['beatMark'] === mark || customMark(window['beatMark'], mark) ) {
+    if (window['beatMark'] === mark || checkCustomMark(window['beatMark'], mark) ) {
       return cb(`_${mark}_`)
     }
     if(window['beatMark'] !== mark ){

@@ -1,22 +1,11 @@
-import { globalWindow } from './utils'
+const onBeat = require('./methods').default
 
-export const beatMark = Symbol('beatMark')
-export const bpm = Symbol('bpm')
-export const stop = Symbol('stop')
-export const custom = Symbol('custom')
-
-window[beatMark] = '0';
-window[bpm] = 120;
-window[stop] = false;
-window[custom] = {
-  'snare': [ '2&', '4&' ],
-  'kick': [ '1-', '2-', '3-', '4-' ],
+module.exports = {
+  onBeat: onBeat,
 }
 
-var wrAF = window.requestAnimationFrame
-
-
-modules.exports = {
-  setup: () => {},
-  onBeat: () => {},
-}
+/* 
+Singletons
+https://www.youtube.com/watch?v=bgU7FeiWKzc
+http://wiki.c2.com/?SingletonPattern
+*/
