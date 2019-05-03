@@ -1,4 +1,4 @@
-import OnBeat from './onBeat'
+import OnBeat from './onBeat.js'
 
 const onBeat = new OnBeat(120, 4, 4)
 
@@ -31,6 +31,58 @@ describe('convertMarkTonumbers', () => {
 	
 })
 
-describe('getTimeTilMark', () => {
-	const timeTilMark = onBeat.getTimeTilMark('4-')
+describe('getCurrentMark', () => {
+	test('getCurrent mark correct - simple', () => {
+		const mark = onBeat.getCurrentMark(0)
+		expect(mark).toBe('1-')
+	})
+	test('getCurrent mark correct - simple', () => {
+		const mark = onBeat.getCurrentMark(1000)
+		expect(mark).toBe('3-')
+	})
+	test('getCurrent mark correct - simple', () => {
+		const mark = onBeat.getCurrentMark(10000)
+		expect(mark).toBe('1-')
+	})
+	test('getCurrent mark correct - offbeat', () => {
+		const mark = onBeat.getCurrentMark(9999)
+		expect(mark).toBe('4a')
+	})
+	test('getCurrent mark correct - offbeat', () => {
+		const mark = new OnBeat(120, 4, 1).getCurrentMark(1490)
+		expect(mark).toBe('3-')
+	})
+	test('getCurrent mark correct - higher tempo', () => {
+		const mark = new OnBeat(180, 4, 1).getCurrentMark(1332)
+		expect(mark).toBe('4-')
+	})
+	test('setBeatMark', () => {
+		onBeat.setBeatMark(1000)
+		expect(onBeat.beatMark).toBe('3-')
+	})
+	
+})
+
+describe.only('getTimeTilMark', () => {
+
+	test('time to next mark', () => {
+		const timeTilMark = onBeat.getTimeTilMark('4-', 0)
+		expect(timeTilMark).toBe(1500);
+	})
+	test('time to next mark', () => {
+		const timeTilMark = new OnBeat(60, 4, 4).getTimeTilMark('4-', 0)
+		expect(timeTilMark).toBe(3000);
+	})
+	test('time to next mark', () => {
+		const timeTilMark = new OnBeat(60, 4, 4).getTimeTilMark('1-', )
+		expect(timeTilMark).toBe(0);
+	})
+	test.only('time to next mark', () => {
+		const timeTilMark = new OnBeat(60, 4, 4).getTimeTilMark('1-', 1050 )
+		expect(timeTilMark).toBe(4000 - 1050);
+	})
+	test('time to next mark', () => {
+		const timeTilMark = new OnBeat(60, 4, 4).getTimeTilMark('2-', 123)
+		expect(timeTilMark).toBe(1000 - 123);
+	})
 })

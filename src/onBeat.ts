@@ -1,4 +1,4 @@
-
+import "@babel/polyfill";
 /**
  * 
  * @param {*} bpm 
@@ -77,6 +77,7 @@ export default class onBeat {
   }
 
   checkCustomMark = (currentMark: string, mark: string) => {
+    //? huh
     currentMark = ['16th','8th','4th'].includes(mark) 
           ? currentMark[1]
           : currentMark
@@ -84,6 +85,16 @@ export default class onBeat {
       this.customMarks[mark]
         && this.customMarks[mark].includes(currentMark)
     )
+  }
+
+  isMarkValid = (mark: string) => {
+    const beat = parseInt(mark)
+    const note = mark.substring(mark.length -1)
+    if (beat && !parseInt(note)) {
+      /* check note is vaild to the timeSignature */
+      return true
+    }
+    throw Error('not a valid mark')
   }
 
   toggleStop() {
@@ -107,7 +118,7 @@ export default class onBeat {
     return beatMark
   }
 
-  getCurrentMark = (timestamp = window.performance.now()) => {
+  getCurrentMark = (timestamp: number = window.performance.now()) => {
     const beat = Math.floor(
       (timestamp / this.bpms) % this.phaseLen) + 1
     const sixteenthNote = onBeat.sixteenths[Math.floor(
@@ -119,22 +130,27 @@ export default class onBeat {
 
   getTimeTilMark = (mark: string, timestamp: number = window.performance.now()) => {
     let [ beat, sixteenthNote] = this.convertMarkTonumbers(mark)
-    let [ b, s] = this.convertMarkTonumbers(this.getCurrentMark(timestamp))
-		this.debug && console.log(
-    	[ beat, sixteenthNote],
-      [ b, s]
-    )
-    //! this will only work for 16ths? # whats going on?
-  	let beatTime = 500 * 4
-    let fraction = beatTime/ (4*4)
-    const getTime = (b,s) => ((fraction *4 * b) + (fraction * (s + 1)))
+    let [ b, n] = this.convertMarkTonumbers(this.getCurrentMark(timestamp))
+
+    // is the mark even valid?
+    this.isMarkValid(mark)
+    // get total time in ms to complete one beat
+    let beatTime = bpmToMs(this.bpm) 
+    // get total time in ms to complete one note
+    let noteTime = beatTime/ this.timeSigniture
+    // time is equal to beatTime x beat + noteTime x (note + 1)
+    const getTime = (b,n) => ((beatTime * (b -1)) + (noteTime * n))
+
+    let currentTime = getTime(b,n) + ( timestamp % noteTime )
     let markTime = getTime(beat,sixteenthNote)
-		let currentTime = getTime(b,s)
-    this.debug && console.log(
-    	markTime,
-			currentTime
-    )
-		const timeTilMark = currentTime < markTime ? markTime - currentTime : beatTime + markTime - currentTime
+
+    console.log( currentTime , markTime )
+    
+    // if the markTime is less than current time it needs to wait complete the cycle
+    const timeTilMark = currentTime <= markTime 
+      ? markTime - currentTime
+      : (beatTime * this.phaseLen) + markTime - currentTime
+
 		return timeTilMark
   }
 
