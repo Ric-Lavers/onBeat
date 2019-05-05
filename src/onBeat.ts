@@ -1,4 +1,3 @@
-import "@babel/polyfill";
 /**
  * 
  * @param {*} bpm 
@@ -13,6 +12,7 @@ export const bpmToMs = (bpm: number, options={decimals: 2}) => {
 
   return Math.round(beatsPerMs * decimalPlaces) / decimalPlaces
 }
+/*  */
 interface Options {
   customMarks?: Array<object>,
   repeat?: boolean,
@@ -22,8 +22,8 @@ interface LoopOptions {
   repeat?: boolean,
   duration?: number,
 }
-
-export default class onBeat {
+/*  */
+class onBeat {
   static sixteenths = ["-", "e", "&", "a"]
   static eighths = ["-", "&"]
   static quaters = ["-"]
@@ -78,7 +78,8 @@ export default class onBeat {
 
   checkCustomMark = (currentMark: string, mark: string) => {
     //? huh
-    currentMark = ['16th','8th','4th'].includes(mark) 
+    const noteTypes: Array<string> = ['16th','8th','4th']
+    currentMark = noteTypes.includes(mark) 
           ? currentMark[1]
           : currentMark
     return (
@@ -99,12 +100,6 @@ export default class onBeat {
 
   toggleStop() {
     this.stop = !this.stop
-  }
-
-  getBeatMark= () => {
-    console.warn('use getCurrentMark instead')
-    this.setBeatMark();
-    return this.beatMark
   }
 
   setBeatMark = (timestamp?: number) => {
@@ -144,8 +139,6 @@ export default class onBeat {
     let currentTime = getTime(b,n) + ( timestamp % noteTime )
     let markTime = getTime(beat,sixteenthNote)
 
-    console.log( currentTime , markTime )
-    
     // if the markTime is less than current time it needs to wait complete the cycle
     const timeTilMark = currentTime <= markTime 
       ? markTime - currentTime
@@ -158,7 +151,7 @@ export default class onBeat {
 
     if(!this.start) this.start = timestamp;
     let progress = timestamp - this.start;
-    cb(progress);
+    cb(progress); // try catch?
 
     if((progress < this.loopOptions.duration || this.loopOptions.repeat) && !this.stop){ 
       let id = window.requestAnimationFrame(t => this.wRAF_LOOP(t, cb))
@@ -166,6 +159,7 @@ export default class onBeat {
   }
 
   beatMarkLoop = () => {
+    // if there is any callbacks in the que, prevent stop and end ?
     if ( (<any>Object).getOwnPropertySymbols(this.que).length ) {
       this.stop = false
       return
@@ -173,8 +167,8 @@ export default class onBeat {
     this.stop = false
 
     const set = () => {
-      let bm = this.getBeatMark()
-      window['beatMark'] = bm
+      let bm = this.setBeatMark()
+      
       if (this.debug){
         document.getElementById('beatmark').innerText = bm
       }
@@ -184,27 +178,43 @@ export default class onBeat {
   }
 
 
-  asyncStep = async (mark, cb) =>{
-    
-    this.beatMarkLoop()
+  asyncStep = (mark: string, cb: any) => {
+    // start the beat
+    this.beatMarkLoop() //?  why are there 2 loops? */
+
+    // if user has used a number, convert to a markString
     mark = typeof mark === 'number' ? `${mark}${'-'}` : mark
     // maybe i'll need this 
-    const markSymbol = Symbol(mark)
+    const markSymbol: symbol = Symbol(mark)
+    // queing with a unique symbol, the callback wont get lost
     this.que[markSymbol] = cb
+
+    let id = null
+
     let step = () => {
       if ( this.beatMark === mark || this.checkCustomMark(this.beatMark, mark) ) {
-        delete this.que[markSymbol]
+        window.cancelAnimationFrame(id)
+        // when the que is empty there is no need to loop. There are no callbacks.
         if ( !(<any>Object).getOwnPropertySymbols(this.que).length ) {
           this.stop = true
         }
-        return cb(`_${mark}_`)
+        try {
+          const data = cb(`_${mark}_`)
+          // losing the callback reference
+          delete this.que[markSymbol]
+          return [data]
+        } catch (error) {
+            // error but the markSymbol remains
+          return [null, markSymbol]
+        }
       }
-      if(this.beatMark !== mark ){
-        window.requestAnimationFrame(step)
-      }
-    }
-    window.requestAnimationFrame(step)
+      else if(this.beatMark !== mark ){
+        id = window.requestAnimationFrame(step) //?  why are there 2 loops? */
+      }else {console.warn("Loop ended prematurely")}
+    }/* beat mark doesn't equal mark and this.checkCustomMark has confirmed the mark  */  
+    
+    // Start the step
+    id = window.requestAnimationFrame(step)
   }
-
 }
-
+export default onBeat

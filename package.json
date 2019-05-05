@@ -12,7 +12,7 @@
     "test:w": "jest -- --watch",
     "build": "babel src -d build",
     "prepare": "npm run build",
-    "build:tsc": "tsc ./src/*.ts",
+    "build:tsc": "tsc -p ./src/*.ts",
     "build:live": "nodemon --watch 'src/**/*.ts' --exec 'ts-node' src/index.ts"
   },
   "babel": {

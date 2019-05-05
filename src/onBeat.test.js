@@ -1,4 +1,4 @@
-import OnBeat from './onBeat.js'
+import OnBeat from './onBeat.ts'
 
 const onBeat = new OnBeat(120, 4, 4)
 
@@ -63,7 +63,7 @@ describe('getCurrentMark', () => {
 	
 })
 
-describe.only('getTimeTilMark', () => {
+describe('getTimeTilMark', () => {
 
 	test('time to next mark', () => {
 		const timeTilMark = onBeat.getTimeTilMark('4-', 0)
@@ -74,15 +74,27 @@ describe.only('getTimeTilMark', () => {
 		expect(timeTilMark).toBe(3000);
 	})
 	test('time to next mark', () => {
-		const timeTilMark = new OnBeat(60, 4, 4).getTimeTilMark('1-', )
+		const timeTilMark = new OnBeat(60, 4, 4).getTimeTilMark('1-', 0)
 		expect(timeTilMark).toBe(0);
-	})
-	test.only('time to next mark', () => {
-		const timeTilMark = new OnBeat(60, 4, 4).getTimeTilMark('1-', 1050 )
-		expect(timeTilMark).toBe(4000 - 1050);
 	})
 	test('time to next mark', () => {
 		const timeTilMark = new OnBeat(60, 4, 4).getTimeTilMark('2-', 123)
 		expect(timeTilMark).toBe(1000 - 123);
 	})
+	test('time to next mark', () => {
+		const timeTilMark = new OnBeat(60, 4, 4).getTimeTilMark('1-', 1050 )
+		expect(timeTilMark).toBe(4000 - 1050);
+	})
+})
+
+describe('asyncStep', () => {
+	it('should return callback correct beat', async() => {
+		const time =  await onBeat.asyncStep(
+			'3-',
+			() => 'time'
+		)
+		console.log( time )
+		// expect(time).toBe(1000) 
+	})
+	
 })
