@@ -1,3 +1,4 @@
+import '@babel/polyfill'
 /**
  * 
  * @param {*} bpm 
@@ -32,6 +33,7 @@ class onBeat {
   public loopOptions: LoopOptions;
   public stop: boolean;
   public start: number | null;
+  public startedAt: number;
   public setToWindow: boolean;
   public customMarks: object;
 
@@ -51,6 +53,7 @@ class onBeat {
   constructor(public bpm: number, public phaseLen: number, public timeSigniture: number, options: Options={ customMarks: [] }) {
     let { sixteenths, eighths, quaters } = onBeat
     let ts = [sixteenths, quaters, eighths, sixteenths]
+    this.startedAt = performance.now()
     this.bpms = bpmToMs( bpm ) || 500
     this.phaseLen = phaseLen || 4
     this.timeSigniture = timeSigniture || 4
@@ -91,11 +94,16 @@ class onBeat {
   isMarkValid = (mark: string) => {
     const beat = parseInt(mark)
     const note = mark.substring(mark.length -1)
-    if (beat && !parseInt(note)) {
+    if (
+      beat &&
+      !parseInt(note) &&
+      beat <= this.phaseLen
+      ) {
       /* check note is vaild to the timeSignature */
       return true
+    }else {
+      return false
     }
-    throw Error('not a valid mark')
   }
 
   toggleStop() {
@@ -178,9 +186,9 @@ class onBeat {
   }
 
 
-  asyncStep = (mark: string, cb: any) => {
+  asyncStep = async (mark: string, cb: any) => {
     // start the beat
-    this.beatMarkLoop() //?  why are there 2 loops? */
+    // this.beatMarkLoop() //?  why are there 2 loops? */
 
     // if user has used a number, convert to a markString
     mark = typeof mark === 'number' ? `${mark}${'-'}` : mark
@@ -191,7 +199,9 @@ class onBeat {
 
     let id = null
 
-    let step = () => {
+    let step = async () => {
+      this.setBeatMark()
+      
       if ( this.beatMark === mark || this.checkCustomMark(this.beatMark, mark) ) {
         window.cancelAnimationFrame(id)
         // when the que is empty there is no need to loop. There are no callbacks.
@@ -202,7 +212,7 @@ class onBeat {
           const data = cb(`_${mark}_`)
           // losing the callback reference
           delete this.que[markSymbol]
-          return [data]
+          return data
         } catch (error) {
             // error but the markSymbol remains
           return [null, markSymbol]
@@ -216,5 +226,33 @@ class onBeat {
     // Start the step
     id = window.requestAnimationFrame(step)
   }
+  
+  promiseStep = (mark, cb) => new Promise((resolve, reject) => {
+    let id;
+
+    mark = typeof mark === 'number' ? `${mark}${'-'}` : mark
+
+    if ( !this.isMarkValid(mark) ) {
+      throw new Error('not a valid mark')
+      // reject('not a valid mark')
+    }
+    let step = (timestamp) => {
+      let bm = this.setBeatMark()
+      // let debug = document.getElementById('beatmark')
+      // if(debug) debug.innerText = bm;
+  
+      if ( this.beatMark === mark || this.checkCustomMark(this.beatMark, mark) ) {
+        let data = cb({ id, timestamp, mark })
+        resolve(data)
+      } else if(this.beatMark !== mark ){
+        id = window.requestAnimationFrame(t => step(t))
+      } else {
+        console.warn("Loop ended prematurely")
+        reject()
+      }
+    }
+    // start loop
+    id = window.requestAnimationFrame(step)
+  })
 }
 export default onBeat

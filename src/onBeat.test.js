@@ -2,6 +2,7 @@ import OnBeat from './onBeat.ts'
 
 const onBeat = new OnBeat(120, 4, 4)
 
+
 test('returns a beatmark', () => {
 	const bm = onBeat.getCurrentMark()
 
@@ -88,13 +89,93 @@ describe('getTimeTilMark', () => {
 })
 
 describe('asyncStep', () => {
-	it('should return callback correct beat', async() => {
-		const time =  await onBeat.asyncStep(
+	// it('should return callback correct beat', async() => {
+	// 	expect.assertions(1);
+	// 	onBeat.asyncStep(
+	// 		'3-',
+	// 		() => {console.log( performance.now() ); return 1000}
+	// 	)
+	// 	.then(time => expect(time).toBe(1000))
+	// 	.catch(err => console.error(err))
+		
+	// })
+})
+
+describe('promiseStep', () => {
+	it('should return the data from function using .then()', () => {
+		return onBeat.promiseStep(
 			'3-',
-			() => 'time'
-		)
-		console.log( time )
-		// expect(time).toBe(1000) 
+			() => 'test'
+		).then( d => {
+			expect(d).toBe('test')
+		})
 	})
+	it('should return the data from function using async/ await', async () => {
+		expect.assertions(1);
+		const data = await onBeat.promiseStep(
+			'3-',
+			() => 'test'
+		)
+		expect(data).toBe('test')
+	})
+	it('should throw when mark is out of range', async() => {
+		expect.assertions(1);
+		try {
+			await onBeat.promiseStep(
+				42,
+				() => 'test'
+			)
+		} catch (e) {
+			expect(e.message).toEqual('not a valid mark');
+		}
+	})
+	it('callback should return a id', async() => {
+		expect.assertions(1);
+		try {
+			const id = await onBeat.promiseStep(
+				'1-',
+				({ id, timestamp }) => ({ id, timestamp })
+			)
+			expect(id.id).not.toBeNaN()
+		} catch (e) {
+		}
+	})
+	it('id to demostrate that its not running multiple loops', async() => {
+		expect.assertions(1);
+		try {
+			let timeNow = performance.now()
+			const id = await onBeat.promiseStep(
+				'2-',
+				({ id, timestamp }) => ({ id, timestamp })
+			)
+			let timeRunning = id.timestamp - timeNow
+			let  miniumFrames = timeRunning /  (1000 / 60) * 1.4/* num calualted includes processing*/
+			
+			expect(id.id).toBeLessThan(  miniumFrames )
+		} catch (e) {
+		}
+	})
+	it.only('not run multiple loops', async() => {
+		jest.setTimeout(10000)
+		
+		const beat = new OnBeat(120, 10, 4)
+		const currentMark = beat.getCurrentMark()
+		console.log({currentMark})
+		beat.promiseStep(
+			parseInt(currentMark > 6  ? 0 : currentMark )+4,
+			(d) => d
+		).then( d => console.log(d) )
+		beat.promiseStep(
+			parseInt(currentMark > 8  ? 0 : currentMark )+2,
+			(d) => d
+		).then( d => console.log(d) )
+
+		let x = await beat.promiseStep(
+			parseInt(currentMark === 1 ? 11 : currentMark ) -1,
+			(d) => d
+		)
+		console.log(x)
+		expect(x.id).not.toBeNaN()
 	
+	})
 })
